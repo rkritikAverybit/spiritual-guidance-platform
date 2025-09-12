@@ -14,6 +14,23 @@ import cohere
 from openai import OpenAI
 from datetime import datetime, date
 import pandas as pd
+import os
+import streamlit as st
+from dotenv import load_dotenv
+
+# Hybrid secrets handling
+try:
+    COHERE_API_KEY = st.secrets["COHERE_API_KEY"]
+    OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
+except Exception:
+    load_dotenv()
+    COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+# Debug test (remove later)
+st.write("✅ COHERE Key Loaded:", bool(COHERE_API_KEY))
+st.write("✅ OPENROUTER Key Loaded:", bool(OPENROUTER_API_KEY))
+
 
 # ======================
 # 🔧 CONFIG & SETUP
