@@ -27,9 +27,6 @@ except Exception:
     COHERE_API_KEY = os.getenv("COHERE_API_KEY")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Debug test (remove later)
-st.write("✅ COHERE Key Loaded:", bool(COHERE_API_KEY))
-st.write("✅ OPENROUTER Key Loaded:", bool(OPENROUTER_API_KEY))
 
 
 # ======================
