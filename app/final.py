@@ -87,6 +87,7 @@ def get_openrouter_client():
 co = get_cohere_client()
 client = get_openrouter_client()
 
+
 # ======================
 # 🎨 Styling
 # ======================
