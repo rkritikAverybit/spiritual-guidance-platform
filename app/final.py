@@ -78,7 +78,7 @@ for d in [RAW_DIR, PROCESSED_DIR, BOOKS_DIR, QUOTES_DIR, VECTOR_DIR, EXPORTS_DIR
 # API clients (cached resources)
 @st.cache_resource
 def get_cohere_client():
-    return cohere.ClientV2(api_key=COHERE_API_KEY)
+    return cohere.Client(api_key=COHERE_API_KEY)
 
 @st.cache_resource
 def get_openrouter_client():
