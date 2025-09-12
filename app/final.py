@@ -413,6 +413,8 @@ def pick_quote_of_the_day():
     safe_write_json(QUOTE_HISTORY_PATH, {"used": used, "last_date": str(date.today())})
     return qotd
 
+
+
 # ======================
 # LLM call (OpenRouter) - safe wrapper
 # ======================
@@ -420,20 +422,15 @@ def ask_llm(prompt, max_retries=3):
     for attempt in range(max_retries):
         try:
             resp = client.chat.completions.create(
-                model="gpt-4o-mini",  # safe default on many routers
-                messages=[{"role": "system", "content": "You are Healrr, a wise and compassionate spiritual guide."},
-                          {"role": "user", "content": prompt}],
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are Healrr, a wise and compassionate spiritual guide."},
+                    {"role": "user", "content": prompt}
+                ],
                 max_tokens=800,
                 temperature=0.7
             )
-            try:
-                return resp.choices[0].message.content
-            except Exception:
-                # fallback to dict style
-                try:
-                    return resp["choices"][0]["message"]["content"]
-                except Exception:
-                    return str(resp)
+            return extract_text(resp)
         except Exception as e:
             if attempt == max_retries - 1:
                 st.error(f"LLM connection error: {e}")
