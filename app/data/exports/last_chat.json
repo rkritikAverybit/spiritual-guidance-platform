@@ -22,5 +22,17 @@
   {
     "role": "assistant",
     "content": "📜 *\"Love is the language that needs no translation.\"*"
+  },
+  {
+    "role": "user",
+    "content": "hiiii"
+  },
+  {
+    "role": "assistant",
+    "content": "Sorry, I'm having trouble connecting right now. Please try again later."
+  },
+  {
+    "role": "assistant",
+    "content": "📜 *\"The universe whispers to those who are willing to listen.\"*"
   }
 ]
