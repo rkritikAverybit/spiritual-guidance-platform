@@ -1,10 +1,8 @@
-# streamlit_app.py - Improved Healrr (full file)
 import os
 import re
 import json
 import time
 import hashlib
-import random
 import streamlit as st
 import faiss
 import numpy as np
@@ -14,6 +12,28 @@ import cohere
 from openai import OpenAI
 from datetime import datetime, date
 import pandas as pd
+
+# --------------------------
+# Load API Keys
+# --------------------------
+def load_keys():
+    cohere_key = None
+    openrouter_key = None
+    try:
+        cohere_key = st.secrets["COHERE_API_KEY"]
+        openrouter_key = st.secrets["OPENROUTER_API_KEY"]
+    except Exception:
+        load_dotenv()
+        cohere_key = os.getenv("COHERE_API_KEY")
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+
+    if not cohere_key or not openrouter_key:
+        st.error("❌ API keys missing! Please check Streamlit Secrets or .env file.")
+        st.stop()
+    return cohere_key, openrouter_key
+
+COHERE_API_KEY, OPENROUTER_API_KEY = load_keys()
+
 
 # ======================
 # 🔧 CONFIG & SETUP
@@ -25,9 +45,6 @@ st.set_page_config(
     menu_items={'About': "Healrr - Your personal spiritual assistant powered by AI"}
 )
 
-load_dotenv()
-COHERE_API_KEY = os.getenv("COHERE_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not COHERE_API_KEY or not OPENROUTER_API_KEY:
     st.error("❌ Missing API keys in .env file")
@@ -57,6 +74,7 @@ def get_openrouter_client():
 
 co = get_cohere_client()
 client = get_openrouter_client()
+
 
 # ======================
 # 🎨 Styling
@@ -172,38 +190,38 @@ def _cohere_embeddings_to_array(resp):
         raise ValueError("Unknown embeddings format from Cohere")
 
 def get_doc_embeddings(texts, batch_size=90):
-    """Generate embeddings with safe progress bar and return np.array (n x d)."""
+    """Generate embeddings using Cohere embed-v4.0"""
     if not texts:
         return None
     embeddings = []
-    total = len(texts)
-    # Always use float progress bar
-    progress_bar = st.progress(0.0)
-    for i in range(0, total, batch_size):
-        batch = texts[i:i+batch_size]
-        try:
-            resp = co.embed(model="embed-english-v3.0", texts=batch, input_type="search_document")
-            batch_arr = _cohere_embeddings_to_array(resp)
-            # Normalize shape
-            if batch_arr.ndim == 1:
-                batch_arr = batch_arr.reshape(1, -1)
+    try:
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i+batch_size]
+            text_inputs = [{"content": [{"type": "text", "text": t}]} for t in batch]
+            resp = co.embed(
+                inputs=text_inputs,
+                model="embed-v4.0",
+                input_type="search_document",
+                embedding_types=["float"],
+            )
+            batch_arr = np.array(resp.embeddings.float, dtype="float32")
             embeddings.append(batch_arr)
-            progress = (i + len(batch)) / total
-            progress_bar.progress(min(1.0, float(progress)))
-        except Exception as e:
-            progress_bar.empty()
-            st.error(f"Embedding error: {e}")
-            return None
-    progress_bar.empty()
-    return np.vstack(embeddings).astype("float32") if embeddings else None
+        return np.vstack(embeddings).astype("float32")
+    except Exception as e:
+        st.error(f"Embedding error: {e}")
+        return None
 
 def get_query_embedding(query):
+    """Generate query embedding using Cohere embed-v4.0"""
     try:
-        resp = co.embed(model="embed-english-v3.0", texts=[query], input_type="search_query")
-        arr = _cohere_embeddings_to_array(resp)
-        if arr.ndim == 2 and arr.shape[0] >= 1:
-            return arr[0].astype("float32")
-        return arr.astype("float32")
+        text_input = [{"content": [{"type": "text", "text": query}]}]
+        resp = co.embed(
+            inputs=text_input,
+            model="embed-v4.0",
+            input_type="search_query",
+            embedding_types=["float"],
+        )
+        return np.array(resp.embeddings.float[0], dtype="float32")
     except Exception as e:
         st.error(f"Query embedding error: {e}")
         return None
@@ -384,6 +402,8 @@ def pick_quote_of_the_day():
     safe_write_json(QUOTE_HISTORY_PATH, {"used": used, "last_date": str(date.today())})
     return qotd
 
+
+
 # ======================
 # LLM call (OpenRouter) - safe wrapper
 # ======================
@@ -391,26 +411,20 @@ def ask_llm(prompt, max_retries=3):
     for attempt in range(max_retries):
         try:
             resp = client.chat.completions.create(
-                model="gpt-4o-mini",  # safe default on many routers
-                messages=[{"role": "system", "content": "You are Healrr, a wise and compassionate spiritual guide."},
-                          {"role": "user", "content": prompt}],
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are Healrr, a wise and compassionate spiritual guide."},
+                    {"role": "user", "content": prompt}
+                ],
                 max_tokens=800,
                 temperature=0.7
             )
-            try:
-                return resp.choices[0].message.content
-            except Exception:
-                # fallback to dict style
-                try:
-                    return resp["choices"][0]["message"]["content"]
-                except Exception:
-                    return str(resp)
+            return resp.choices[0].message.content  # ✅ fixed for new SDK
         except Exception as e:
             if attempt == max_retries - 1:
                 st.error(f"LLM connection error: {e}")
                 return "Sorry, I'm having trouble connecting right now. Please try again later."
             time.sleep(2 ** attempt)
-
 # ======================
 # UI: Header & session init
 # ======================
@@ -700,7 +714,6 @@ elif st.session_state["selected_page"] == "🧘 Meditation":
             remaining = total_seconds - elapsed
             mins, secs = divmod(remaining, 60)
             time_display.markdown(f'<div class="timer-display">{mins:02d}:{secs:02d}</div>', unsafe_allow_html=True)
-          
             progress_bar.progress(elapsed/total_seconds)
             if elapsed == 0:
                 status_display.info("🌱 Begin by taking three deep breaths...")
