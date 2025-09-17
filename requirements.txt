@@ -7,3 +7,5 @@ faiss-cpu>=1.8.0
 numpy>=1.26.4
 pandas>=2.2.2
 supabase>=1.0.0
+matplotlib>=3.8.0
+streamlit-chat>=0.0.2

@@ -48,10 +48,15 @@ def search_index(query: str, top_k: int = 3):
 
     query_vec = embed_query(query)
     distances, indices = index.search(query_vec, top_k)
-
+    
     results = []
     for idx in indices[0]:
         if 0 <= idx < len(chunks):
             results.append(chunks[idx])
+    
+    # 🔹 Hybrid search fallback: keyword filter
+    if not results:
+        results = [c for c in chunks if query.lower() in c.lower()][:top_k]
+
 
     return results

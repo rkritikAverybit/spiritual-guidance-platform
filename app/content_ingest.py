@@ -23,12 +23,20 @@ co = cohere.ClientV2(api_key=config.COHERE_API_KEY)
 def clean_text(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50):
+def chunk_text(text: str, chunk_size: int = 300, overlap: int = 50):
+    """
+    Split text into smaller chunks with overlap.
+    Default chunk_size reduced from 500 → 300 for better context accuracy.
+    """
     words = text.split()
     chunks = []
     for i in range(0, len(words), chunk_size - overlap):
-        chunks.append(" ".join(words[i:i + chunk_size]))
+        chunk = " ".join(words[i:i + chunk_size])
+        # avoid very short chunks
+        if len(chunk.split()) > 50:
+            chunks.append(chunk)
     return chunks
+
 
 def save_faiss_index(embeddings, chunks, save_path=SAVE_PATH):
     """Save embeddings + chunks into FAISS index."""
@@ -76,25 +84,16 @@ def ingest_substack_csv(file_path: str, save_path: str = SAVE_PATH):
     embeddings = embed_texts(chunks)
     save_faiss_index(embeddings, chunks, save_path)
 
-def ingest_quotes_file(file_path: str) -> int:
-    """Ingest quotes from TXT or CSV into Supabase (not FAISS yet)."""
+def ingest_quotes_file(file_path):
     quotes = []
-
-    if file_path.endswith(".txt"):
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    quotes.append({"content": line, "reference": None})
-
-    elif file_path.endswith(".csv"):
-        df = pd.read_csv(file_path)
-        for _, row in df.iterrows():
-            text = str(row.get("content", "")).strip()
-            ref = str(row.get("reference", "")).strip()
-            if text:
-                quotes.append({"content": text, "reference": ref})
-
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                quotes.append({
+                    "content": line,           # ✅ correct column name
+                    "reference": "Uploaded File"
+                })
     if quotes:
         db.supabase.table("quotes").insert(quotes).execute()
     return len(quotes)
