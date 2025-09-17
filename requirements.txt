@@ -9,3 +9,5 @@ pandas>=2.2.2
 supabase>=1.0.0
 matplotlib>=3.8.0
 streamlit-chat>=0.0.2
+streamlit_autorefresh>=0.1.0
+Pillow>=10.0.0
